@@ -116,11 +116,9 @@ static os_log_t logger;
     NSString *event = dictionary[@"action"];
     // Data is the actual information that we need in the packet
     NSDictionary *eventData = dictionary[@"data"];
-    // Transaction ID enables us to communicate back to the server that the action was complete
-    NSString *transaction = nil;
-    if ([dictionary objectForKey:(@"transactionId")] != [NSNull null]) {
-        transaction = dictionary[@"transactionId"];
-    }
+    // Fire-and-forget events carry no transaction; a nil would throw inside every reply's dictionary
+    // literal, and the server ignores replies whose transactionId is null.
+    NSString *transaction = dictionary[@"transactionId"] ?: (NSString *)[NSNull null];
     [[BlueBubblesHelper sharedInstance] handleServerEvent:event data:eventData transactionId:transaction];
 }
 

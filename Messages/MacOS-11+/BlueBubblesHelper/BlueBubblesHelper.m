@@ -276,10 +276,8 @@ static NSMutableArray* vettedAliases;
 }
 
 -(void) handleServerEvent: (NSString*)event data: (NSDictionary*)data transactionId: (NSString*)transaction {
+    // The server sends `data: null` on some events; NSNull would throw on the first subscript.
     if (![data isKindOfClass:[NSDictionary class]]) data = @{};
-    // Fire-and-forget events carry no transaction; a nil would throw inside every reply's dictionary
-    // literal below, and the server ignores replies whose transactionId is null.
-    if (transaction == nil) transaction = (NSString *)[NSNull null];
     NSString *chatGuid = data[@"chatGuid"];
     
     if ([event isEqualToString:@"start-typing"]) {
