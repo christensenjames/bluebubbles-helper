@@ -879,6 +879,8 @@ static NSMutableArray* vettedAliases;
     if([@"-laugh" isEqualToString:(lowerCaseType)]) return 3003;
     if([@"-emphasize" isEqualToString:(lowerCaseType)]) return 3004;
     if([@"-question" isEqualToString:(lowerCaseType)]) return 3005;
+    if([@"emoji" isEqualToString:(lowerCaseType)]) return 2006;
+    if([@"-emoji" isEqualToString:(lowerCaseType)]) return 3006;
     return 0;
 }
 
@@ -898,6 +900,16 @@ static NSMutableArray* vettedAliases;
     if([@"-emphasize" isEqualToString:(lowerCaseType)]) return @"Removed an exclamation from ";
     if([@"-question" isEqualToString:(lowerCaseType)]) return @"Removed a question mark from ";
     return @"";
+}
+
++(NSString *) reactionToVerb:(NSString *)reactionType emoji:(NSString *)emoji {
+    NSString *lowerCaseType = [reactionType lowercaseString];
+
+    if (emoji != nil && (id)emoji != [NSNull null] && [emoji length] != 0) {
+        if([@"emoji" isEqualToString:(lowerCaseType)]) return [NSString stringWithFormat:(@"Reacted %@ to "), emoji];
+        if([@"-emoji" isEqualToString:(lowerCaseType)]) return [NSString stringWithFormat:(@"Removed a %@ reaction from "), emoji];
+    }
+    return [BlueBubblesHelper reactionToVerb:(reactionType)];
 }
 
 +(void) getMessageItem:(IMChat *)chat :(NSString *)actionMessageGuid completionBlock:(void (^)(IMMessage *message))block {
@@ -1054,6 +1066,13 @@ static NSMutableArray* vettedAliases;
             messageToSend.threadIdentifier = threadIdentifier;
         } else {
             messageToSend = [messageToSend initWithSender:(nil) time:(nil) text:(message) messageSubject:(subject) fileTransferGUIDs:(nil) flags:(0x5) error:(nil) guid:(nil) subject:(nil) associatedMessageGUID:(associatedMessageGuid) associatedMessageType:*(reaction) associatedMessageRange:(range) messageSummaryInfo:(summaryInfo)];
+            // Sequoia+ keeps the arbitrary-emoji glyph in its own IMMessage property, whose
+            // setter is the underscore-prefixed `_associatedMessageEmoji:`; absent pre-Sequoia.
+            NSString *reactionEmoji = data[@"reactionEmoji"];
+            SEL setEmoji = NSSelectorFromString(@"_associatedMessageEmoji:");
+            if (reactionEmoji != nil && (id)reactionEmoji != [NSNull null] && [reactionEmoji length] != 0 && [messageToSend respondsToSelector:setEmoji]) {
+                [messageToSend performSelector:setEmoji withObject:reactionEmoji];
+            }
         }
 
         if (ddScan && [[NSProcessInfo processInfo] operatingSystemVersion].majorVersion >= 13) {
@@ -1127,10 +1146,10 @@ static NSMutableArray* vettedAliases;
                     NSData *dataenc = [text.string dataUsingEncoding:NSNonLossyASCIIStringEncoding];
                     NSString *encodevalue = [[NSString alloc]initWithData:dataenc encoding:NSUTF8StringEncoding];
                     if ([encodevalue isEqualToString:@"\\ufffc"]) {
-                        NSMutableAttributedString *newAttributedString = [[NSMutableAttributedString alloc] initWithString: [[BlueBubblesHelper reactionToVerb:(reaction)] stringByAppendingString:(@"an attachment")]];
+                        NSMutableAttributedString *newAttributedString = [[NSMutableAttributedString alloc] initWithString: [[BlueBubblesHelper reactionToVerb:(reaction) emoji:(data[@"reactionEmoji"])] stringByAppendingString:(@"an attachment")]];
                         createMessage(newAttributedString, subjectAttributedString, effectId, nil, [NSString stringWithFormat:@"p:%@/%@", data[@"partIndex"], [message guid]], &reactionLong, [item messagePartRange], @{}, nil, false, ddScan);
                     } else {
-                        NSMutableAttributedString *newAttributedString = [[NSMutableAttributedString alloc] initWithString: [[BlueBubblesHelper reactionToVerb:(reaction)] stringByAppendingString:([NSString stringWithFormat:(@"“%@”"), text.string])]];
+                        NSMutableAttributedString *newAttributedString = [[NSMutableAttributedString alloc] initWithString: [[BlueBubblesHelper reactionToVerb:(reaction) emoji:(data[@"reactionEmoji"])] stringByAppendingString:([NSString stringWithFormat:(@"“%@”"), text.string])]];
                         if ([item text] == nil) {
                             createMessage(newAttributedString, subjectAttributedString, effectId, nil, [NSString stringWithFormat:@"bp:%@", [message guid]], &reactionLong, [item messagePartRange], messageSummary, nil, false, ddScan);
                         } else {
@@ -1145,10 +1164,10 @@ static NSMutableArray* vettedAliases;
                     NSString *encodevalue = [[NSString alloc]initWithData:dataenc encoding:NSUTF8StringEncoding];
                     NSRange range = NSMakeRange(0, [message text].string.length);
                     if ([encodevalue isEqualToString:@"\\ufffc"] || [encodevalue length] == 0) {
-                        NSMutableAttributedString *newAttributedString = [[NSMutableAttributedString alloc] initWithString: [[BlueBubblesHelper reactionToVerb:(reaction)] stringByAppendingString:(@"an attachment")]];
+                        NSMutableAttributedString *newAttributedString = [[NSMutableAttributedString alloc] initWithString: [[BlueBubblesHelper reactionToVerb:(reaction) emoji:(data[@"reactionEmoji"])] stringByAppendingString:(@"an attachment")]];
                         createMessage(newAttributedString, subjectAttributedString, effectId, nil, [message guid], &reactionLong, range, @{}, nil, false, ddScan);
                     } else {
-                        NSMutableAttributedString *newAttributedString = [[NSMutableAttributedString alloc] initWithString: [[BlueBubblesHelper reactionToVerb:(reaction)] stringByAppendingString:([NSString stringWithFormat:(@"“%@”"), [message text].string])]];
+                        NSMutableAttributedString *newAttributedString = [[NSMutableAttributedString alloc] initWithString: [[BlueBubblesHelper reactionToVerb:(reaction) emoji:(data[@"reactionEmoji"])] stringByAppendingString:([NSString stringWithFormat:(@"“%@”"), [message text].string])]];
                         createMessage(newAttributedString, subjectAttributedString, effectId, nil, [message guid], &reactionLong, range, messageSummary, nil, false, ddScan);
                     }
                 }
