@@ -194,7 +194,9 @@ static NSMutableArray* vettedAliases;
         [chat setLocalUserIsTyping:isTyping];
         os_log(logger, "Set local user is typing %d on chat %@", isTyping, chatGuid);
         
-        [networkController sendMessage: @{@"transactionId": transaction}];
+        if (transaction != nil) {
+            [networkController sendMessage: @{@"transactionId": transaction}];
+        }
     }
 }
 
@@ -276,6 +278,7 @@ static NSMutableArray* vettedAliases;
 }
 
 -(void) handleServerEvent: (NSString*)event data: (NSDictionary*)data transactionId: (NSString*)transaction {
+    if (![data isKindOfClass:[NSDictionary class]]) data = @{};
     NSString *chatGuid = data[@"chatGuid"];
     
     if ([event isEqualToString:@"start-typing"]) {
