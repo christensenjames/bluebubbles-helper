@@ -194,9 +194,7 @@ static NSMutableArray* vettedAliases;
         [chat setLocalUserIsTyping:isTyping];
         os_log(logger, "Set local user is typing %d on chat %@", isTyping, chatGuid);
         
-        if (transaction != nil) {
-            [networkController sendMessage: @{@"transactionId": transaction}];
-        }
+        [networkController sendMessage: @{@"transactionId": transaction}];
     }
 }
 
@@ -279,6 +277,9 @@ static NSMutableArray* vettedAliases;
 
 -(void) handleServerEvent: (NSString*)event data: (NSDictionary*)data transactionId: (NSString*)transaction {
     if (![data isKindOfClass:[NSDictionary class]]) data = @{};
+    // Fire-and-forget events carry no transaction; a nil would throw inside every reply's dictionary
+    // literal below, and the server ignores replies whose transactionId is null.
+    if (transaction == nil) transaction = (NSString *)[NSNull null];
     NSString *chatGuid = data[@"chatGuid"];
     
     if ([event isEqualToString:@"start-typing"]) {
