@@ -752,7 +752,7 @@ static NSMutableArray* vettedAliases;
             } else {
                 IMNickname *nickname = [[controller personalNickname] copy];
                 [nickname setAvatar:avatar];
-                [controller updatePersonalNickname:nickname];
+                [controller setPersonalNickname:nickname];
             }
         }
 
