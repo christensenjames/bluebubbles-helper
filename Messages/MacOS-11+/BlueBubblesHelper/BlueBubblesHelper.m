@@ -731,6 +731,34 @@ static NSMutableArray* vettedAliases;
             };
             [[NetworkController sharedInstance] sendMessage:data];
         }
+    // macOS 14+ (verified on 26.6); older releases lack the contentIsSensitive initializer
+    } else if ([event isEqualToString:@"set-personal-avatar"]) {
+        IMNicknameController *controller = [IMNicknameController sharedInstance];
+        NSData *imageData = [NSData dataWithContentsOfFile:data[@"path"]];
+        NSString *error = nil;
+        if (imageData == nil) {
+            error = @"Could not read the image file!";
+        } else if (![controller personalNickname] || ![controller _canUpdatePersonalNickname]) {
+            error = @"Name and Photo Sharing is not set up in Messages!";
+        } else if (![IMNicknameAvatarImage instancesRespondToSelector:@selector(initWithImageName:imageData:imageFilePath:contentIsSensitive:error:)]) {
+            error = @"Setting the contact card photo is not supported on this macOS version!";
+        } else {
+            NSString *name = [[NSUUID UUID] UUIDString];
+            NSString *path = [NSTemporaryDirectory() stringByAppendingPathComponent:name];
+            NSError *writeError = nil;
+            IMNicknameAvatarImage *avatar = [[IMNicknameAvatarImage alloc] initWithImageName:name imageData:imageData imageFilePath:path contentIsSensitive:NO error:&writeError];
+            if (avatar == nil) {
+                error = [writeError localizedDescription] ?: @"Could not create the avatar image!";
+            } else {
+                IMNickname *nickname = [[controller personalNickname] copy];
+                [nickname setAvatar:avatar];
+                [controller updatePersonalNickname:nickname];
+            }
+        }
+
+        if (transaction != nil) {
+            [[NetworkController sharedInstance] sendMessage: error == nil ? @{@"transactionId": transaction} : @{@"transactionId": transaction, @"error": error}];
+        }
     // If the server tells us to get the current account info
     } else if ([event isEqualToString:@"get-account-info"]) {
         IMAccountController *controller = [IMAccountController sharedInstance];
